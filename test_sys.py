@@ -1,9 +1,23 @@
 import subprocess
 from os import walk
 from os import path
+from concurrent.futures import ThreadPoolExecutor
 import time
 
-task = "A"
+
+TASK_TIME_LIMIT_SEC = 1
+
+def get_ans_from_solution(s_name, s_in):
+    proc = subprocess.Popen(['python3', solution_nm, ''], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
+    t1 = time.time()
+    proc.communicate(t_in_cont.encode("utf-8"))
+    out = proc.communicate()[0].decode("utf-8")[:-1]  # Omit 2 special symbols at the end of the output
+    t2 = time.time()
+
+    return t2-t1, out
+
+task = "I"
 solution_nm = "solution.py"
 #task = input("Which task do you want to solve? ")
 #solution_nm = input("Provide the path to your solution: ")
@@ -11,6 +25,9 @@ solution_nm = "solution.py"
 test_path = task + "/tests"
 
 filenames = next(walk(test_path), (None, None, []))[2]
+task_files = next(walk(task), (None, None, []))[2]
+
+has_checker = "checker.py" in task_files
 
 n_correct = 0
 n_total = len(filenames) // 2
@@ -24,20 +41,16 @@ for i in range(0, len(filenames), 2):
     out_file_path = path.join(test_path, str(i_file) + ".ans")
 
     t_in = open(in_file_path, "r")
-    t_out = open(out_file_path, "r")
     t_in_cont = t_in.read().strip()
-    t_out_cont = t_out.readlines()
-    proc = subprocess.Popen(['python3', solution_nm, ''], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
-    t1 = time.time()
-    proc.communicate(t_in_cont.encode("utf-8"))
-    out = proc.communicate()[0].decode("utf-8")[:-1]  # Omit 2 special symbols at the end of the output
-    t2 = time.time()
-    out_lines = out.split("\n")
-    out_lines = [s[:-1] for s in out_lines]
-    t_out_cont = [s[:-1] for s in t_out_cont]
 
-    dur = t2 - t1
+    t_out = ""
+    t_out_cont = []
+
+    if not has_checker:
+        t_out = open(out_file_path, "r")
+        t_out_cont = t_out.readlines()
+    
+    dur, out = get_ans_from_solution(solution_nm, t_in_cont)
 
     if dur < t_min:
         t_min = dur
@@ -47,6 +60,24 @@ for i in range(0, len(filenames), 2):
 
     t_avg += dur
 
+    if has_checker:
+        proc = subprocess.Popen(['python3', task+"/"+"checker.py", ''], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        checker_in = out + "\n" + t_in_cont + "\n"
+        proc.communicate(checker_in.encode("utf-8"))
+        checker_out = proc.communicate()[0].decode("utf-8")[:-1]  # Omit 2 special symbols at the end of the output
+        if checker_out == "YES":
+            n_correct += 1
+        else:
+            print("Неверный ответ на тесте " + str(i_file))
+            print(out)
+            break
+
+        continue
+
+    out_lines = out.split("\n")
+    out_lines = [s[:-1] for s in out_lines]
+    t_out_cont = [s[:-1] for s in t_out_cont]
 
     if len(out_lines) == len(t_out_cont):
         right = True
@@ -60,16 +91,18 @@ for i in range(0, len(filenames), 2):
             right = ok
         if right:
             n_correct += 1
-        #else:
-        #    print(t_out_cont, out_lines)
+        else:
+            print("Неверный ответ на тесте " + str(i_file))
+            print(out)
+            break
             
     i_file += 1
 
 
 t_avg /= n_total
 
-print("Average time: {0}, Min time: {1}, Max time: {2}".format(t_avg, t_min, t_max))
+print("Среднее время: {0} секунд, Минимальное время: {1} секунд, Максимальное время: {2} секунд".format(t_avg, t_min, t_max))
 if n_correct == n_total:
-    print("Success!")
+    print("Полное решение.")
 else:
-    print("Your solution passed ", n_correct, " out of ", n_total, " tests.", "This is ", n_correct*100/n_total, "% of all tests.")
+    print("Неверное решение.")
