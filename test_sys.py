@@ -1,7 +1,7 @@
 import subprocess
 from os import walk
 from os import path
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import time
 
 
@@ -19,8 +19,9 @@ def get_ans_from_solution(s_name, s_in):
 
 task = "I"
 solution_nm = "solution.py"
-#task = input("Which task do you want to solve? ")
-#solution_nm = input("Provide the path to your solution: ")
+task = input("Введите название задания(заглавная латинская буква)")
+solution_nm = input("Введите название файла с решением(должен " \
+                    "находиться в одной папке с тестирующей системой)")
 
 test_path = task + "/tests"
 
@@ -34,6 +35,8 @@ n_total = len(filenames) // 2
 t_avg = 0
 t_min = 10 ** 10
 t_max = -1
+
+
 
 i_file = 1
 for i in range(0, len(filenames), 2):
@@ -50,7 +53,18 @@ for i in range(0, len(filenames), 2):
         t_out = open(out_file_path, "r")
         t_out_cont = t_out.readlines()
     
-    dur, out = get_ans_from_solution(solution_nm, t_in_cont)
+    pool = ThreadPoolExecutor()
+    future = pool.submit(get_ans_from_solution, solution_nm, t_in_cont)
+
+    dur, out = 0, ""
+    try:
+        dur, out = future.result(TASK_TIME_LIMIT_SEC)
+    except TimeoutError:
+        print(f"Превышено ограничение по времени на тесте {i_file}.")
+        print("Неверное решение.")
+        future.cancel()
+        pool.shutdown()
+        exit(0)
 
     if dur < t_min:
         t_min = dur
