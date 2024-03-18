@@ -50,8 +50,6 @@ t_avg = 0
 t_min = 10 ** 10
 t_max = -1
 
-
-
 i_file = 1
 for i in range(0, len(filenames), 2):
     in_file_path = os.path.join(test_path, str(i_file) + ".txt")
