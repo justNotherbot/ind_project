@@ -17,11 +17,26 @@ def get_ans_from_solution(s_name, s_in):
 
     return t2-t1, out
 
-task = "I"
-solution_nm = "solution.py"
-task = input("Введите название задания(заглавная латинская буква)")
-solution_nm = input("Введите название файла с решением(должен " \
-                    "находиться в одной папке с тестирующей системой)")
+full_script_dir = os.path.dirname(os.path.realpath(__file__))
+script_dir_cont = os.listdir(full_script_dir)  # Content of script's directory.
+#task = "I"
+#solution_nm = "solution.py"
+task = ""
+while task not in script_dir_cont or len(task) != 1:
+    task = input("Введите название задания(заглавная латинская буква)").strip()
+
+solution_nm = ""
+
+while len(solution_nm) == 0:
+    solution_nm = input("Введите название файла с решением(должен " \
+                        "находиться в одной папке с тестирующей системой)").strip()
+    
+    try:
+        f = open(solution_nm, "r")
+    except Exception:
+        print("Невозможно открыть указанный файл. Попробуйте ещё раз.")
+        solution_nm = ""
+        continue
 
 test_path = task + "/tests"
 
