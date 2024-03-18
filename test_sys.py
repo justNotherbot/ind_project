@@ -1,6 +1,5 @@
 import subprocess
-from os import walk
-from os import path
+import os
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import time
 
@@ -40,8 +39,8 @@ while len(solution_nm) == 0:
 
 test_path = task + "/tests"
 
-filenames = next(walk(test_path), (None, None, []))[2]
-task_files = next(walk(task), (None, None, []))[2]
+filenames = next(os.walk(test_path), (None, None, []))[2]
+task_files = next(os.walk(task), (None, None, []))[2]
 
 has_checker = "checker.py" in task_files
 
@@ -55,8 +54,8 @@ t_max = -1
 
 i_file = 1
 for i in range(0, len(filenames), 2):
-    in_file_path = path.join(test_path, str(i_file) + ".txt")
-    out_file_path = path.join(test_path, str(i_file) + ".ans")
+    in_file_path = os.path.join(test_path, str(i_file) + ".txt")
+    out_file_path = os.path.join(test_path, str(i_file) + ".ans")
 
     t_in = open(in_file_path, "r")
     t_in_cont = t_in.read().strip()
