@@ -1,7 +1,6 @@
 import subprocess
-from os import walk
-from os import path
-from concurrent.futures import ThreadPoolExecutor
+import os
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import time
 
 
@@ -17,15 +16,31 @@ def get_ans_from_solution(s_name, s_in):
 
     return t2-t1, out
 
-task = "I"
-solution_nm = "solution.py"
-#task = input("Which task do you want to solve? ")
-#solution_nm = input("Provide the path to your solution: ")
+full_script_dir = os.path.dirname(os.path.realpath(__file__))
+script_dir_cont = os.listdir(full_script_dir)  # Content of script's directory.
+#task = "I"
+#solution_nm = "solution.py"
+task = ""
+while task not in script_dir_cont or len(task) != 1:
+    task = input("Введите название задания(заглавная латинская буква)").strip()
+
+solution_nm = ""
+
+while len(solution_nm) == 0:
+    solution_nm = input("Введите название файла с решением(должен " \
+                        "находиться в одной папке с тестирующей системой)").strip()
+    
+    try:
+        f = open(solution_nm, "r")
+    except Exception:
+        print("Невозможно открыть указанный файл. Попробуйте ещё раз.")
+        solution_nm = ""
+        continue
 
 test_path = task + "/tests"
 
-filenames = next(walk(test_path), (None, None, []))[2]
-task_files = next(walk(task), (None, None, []))[2]
+filenames = next(os.walk(test_path), (None, None, []))[2]
+task_files = next(os.walk(task), (None, None, []))[2]
 
 has_checker = "checker.py" in task_files
 
@@ -35,10 +50,12 @@ t_avg = 0
 t_min = 10 ** 10
 t_max = -1
 
+
+
 i_file = 1
 for i in range(0, len(filenames), 2):
-    in_file_path = path.join(test_path, str(i_file) + ".txt")
-    out_file_path = path.join(test_path, str(i_file) + ".ans")
+    in_file_path = os.path.join(test_path, str(i_file) + ".txt")
+    out_file_path = os.path.join(test_path, str(i_file) + ".ans")
 
     t_in = open(in_file_path, "r")
     t_in_cont = t_in.read().strip()
@@ -50,7 +67,18 @@ for i in range(0, len(filenames), 2):
         t_out = open(out_file_path, "r")
         t_out_cont = t_out.readlines()
     
-    dur, out = get_ans_from_solution(solution_nm, t_in_cont)
+    pool = ThreadPoolExecutor()
+    future = pool.submit(get_ans_from_solution, solution_nm, t_in_cont)
+
+    dur, out = 0, ""
+    try:
+        dur, out = future.result(TASK_TIME_LIMIT_SEC)
+    except TimeoutError:
+        print(f"Превышено ограничение по времени на тесте {i_file}.")
+        print("Неверное решение.")
+        future.cancel()
+        pool.shutdown()
+        exit(0)
 
     if dur < t_min:
         t_min = dur
